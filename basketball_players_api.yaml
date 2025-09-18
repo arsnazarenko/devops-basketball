@@ -1,0 +1,295 @@
+openapi: 3.0.3
+info:
+  title: Basketball Player Management API
+  description: |
+    A simple REST API for managing basketball team players.
+
+    This API provides CRUD operations for managing basketball players within a professional league.
+    It allows authorized clients to create, read, update, and delete player profiles, including personal details,
+    physical attributes, citizenship, position (role), and team affiliation.
+
+    Designed for integration with team management systems, scouting platforms, and league statistics services.
+
+  version: 0.0.1
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Players
+    description: Operations with basketball players
+
+paths:
+  /players:
+    get:
+      summary: Get list of all players
+      tags: [Players]
+      responses:
+        '200':
+          description: List of players
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Player'
+      operationId: listPlayers
+
+    post:
+      summary: Create a new player
+      tags: [Players]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayerCreate'
+      responses:
+        '201':
+          description: Player successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+        '400':
+          description: Invalid input data
+      operationId: createPlayer
+
+  /players/{id}:
+    get:
+      summary: Get player by ID
+      tags: [Players]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Player data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+        '404':
+          description: Player not found
+      operationId: getPlayer
+
+    put:
+      summary: Update player by ID
+      tags: [Players]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayerUpdate'
+      responses:
+        '200':
+          description: Player successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+        '400':
+          description: Invalid input data
+        '404':
+          description: Player not found
+      operationId: updatePlayer
+
+    delete:
+      summary: Delete player by ID
+      tags: [Players]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Player successfully deleted
+        '404':
+          description: Player not found
+      operationId: deletePlayer
+
+components:
+  schemas:
+    Player:
+      type: object
+      required:
+        - id
+        - name
+        - surname
+        - age
+        - height
+        - weight
+        - citizenship
+        - role
+        - teamId
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "LeBron"
+        surname:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "James"
+        age:
+          type: integer
+          minimum: 15
+          maximum: 50
+          example: 39
+        height:
+          type: integer
+          description: Height in millimeters (e.g., 2060 mm = 2.06 m)
+          minimum: 1500
+          example: 2060
+        weight:
+          type: integer
+          description: Weight in grams (e.g., 113000 g = 113.0 kg)
+          minimum: 50000
+          example: 113000
+        citizenship:
+          type: string
+          minLength: 2
+          example: "USA"
+        role:
+          type: string
+          enum:
+            - PG
+            - SG
+            - SF
+            - PF
+            - C
+          example: "SF"
+        teamId:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 101
+
+    PlayerCreate:
+      type: object
+      required:
+        - name
+        - surname
+        - age
+        - height
+        - weight
+        - citizenship
+        - role
+        - teamId
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "Stephen"
+        surname:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "Curry"
+        age:
+          type: integer
+          minimum: 15
+          maximum: 50
+          example: 36
+        height:
+          type: integer
+          description: Height in millimeters (e.g., 1910 mm = 1.91 m)
+          minimum: 1500
+          example: 1910
+        weight:
+          type: integer
+          description: Weight in grams (e.g., 86000 g = 86.0 kg)
+          minimum: 50000
+          example: 86000
+        citizenship:
+          type: string
+          minLength: 2
+          example: "USA"
+        role:
+          type: string
+          enum:
+            - PG
+            - SG
+            - SF
+            - PF
+            - C
+          example: "PG"
+        teamId:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 102
+
+    PlayerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "Stephen"
+        surname:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "Curry"
+        age:
+          type: integer
+          minimum: 15
+          maximum: 50
+          example: 37
+        height:
+          type: integer
+          description: Height in millimeters (e.g., 1910 mm = 1.91 m)
+          minimum: 1500
+          example: 1910
+        weight:
+          type: integer
+          description: Weight in grams (e.g., 87000 g = 87.0 kg)
+          minimum: 50000
+          example: 87000
+        citizenship:
+          type: string
+          minLength: 2
+          example: "USA"
+        role:
+          type: string
+          enum:
+            - PG
+            - SG
+            - SF
+            - PF
+            - C
+          example: "PG"
+        teamId:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 102
+      description: Fields to update. Partial updates are allowed.
