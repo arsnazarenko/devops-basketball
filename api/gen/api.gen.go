@@ -4,11 +4,18 @@
 package gen
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
@@ -99,6 +106,15 @@ type PlayerUpdate struct {
 // PlayerUpdateRole defines model for PlayerUpdate.Role.
 type PlayerUpdateRole string
 
+// ListPlayersParams defines parameters for ListPlayers.
+type ListPlayersParams struct {
+	// PageNumber Page number (starts from 1)
+	PageNumber *int32 `form:"page_number,omitempty" json:"page_number,omitempty"`
+
+	// PageSize Number of items per page (maximum 100)
+	PageSize *int32 `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
 // CreatePlayerJSONRequestBody defines body for CreatePlayer for application/json ContentType.
 type CreatePlayerJSONRequestBody = PlayerCreate
 
@@ -109,7 +125,7 @@ type UpdatePlayerJSONRequestBody = PlayerUpdate
 type ServerInterface interface {
 	// Get list of all players
 	// (GET /players)
-	ListPlayers(w http.ResponseWriter, r *http.Request)
+	ListPlayers(w http.ResponseWriter, r *http.Request, params ListPlayersParams)
 	// Create a new player
 	// (POST /players)
 	CreatePlayer(w http.ResponseWriter, r *http.Request)
@@ -130,7 +146,7 @@ type Unimplemented struct{}
 
 // Get list of all players
 // (GET /players)
-func (_ Unimplemented) ListPlayers(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) ListPlayers(w http.ResponseWriter, r *http.Request, params ListPlayersParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -170,8 +186,29 @@ type MiddlewareFunc func(http.Handler) http.Handler
 // ListPlayers operation middleware
 func (siw *ServerInterfaceWrapper) ListPlayers(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPlayersParams
+
+	// ------------- Optional query parameter "page_number" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page_number", r.URL.Query(), &params.PageNumber)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page_number", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page_size", r.URL.Query(), &params.PageSize)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page_size", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListPlayers(w, r)
+		siw.Handler.ListPlayers(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -403,6 +440,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 }
 
 type ListPlayersRequestObject struct {
+	Params ListPlayersParams
 }
 
 type ListPlayersResponseObject interface {
@@ -416,6 +454,14 @@ func (response ListPlayers200JSONResponse) VisitListPlayersResponse(w http.Respo
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
+}
+
+type ListPlayers400Response struct {
+}
+
+func (response ListPlayers400Response) VisitListPlayersResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
 }
 
 type CreatePlayerRequestObject struct {
@@ -575,8 +621,10 @@ type strictHandler struct {
 }
 
 // ListPlayers operation middleware
-func (sh *strictHandler) ListPlayers(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) ListPlayers(w http.ResponseWriter, r *http.Request, params ListPlayersParams) {
 	var request ListPlayersRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListPlayers(ctx, request.(ListPlayersRequestObject))
@@ -712,4 +760,104 @@ func (sh *strictHandler) UpdatePlayer(w http.ResponseWriter, r *http.Request, id
 	} else if response != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
 	}
+}
+
+// Base64 encoded, gzipped, json marshaled Swagger object
+var swaggerSpec = []string{
+
+	"H4sIAAAAAAAC/+xX32/bNhD+Vw7cHlJAkCWnTVIDBZYma5ch24ymxR6aYGCks8yWIlmSSuoG/t+HI2U7",
+	"spXlB9p0D31JZInHu/u++47HK1bo2miFyjs2umKumGLNw+NY8hlaejJWG7ReYHjPK6R/+JnXRiIbbT9P",
+	"WM0/i7qp2ehZlrBaqPgjf5YwPzPIRkwojxVaNk9YIbz4gspNhensw96d7LNgfYyq8lM2Gi7NnbdCVWQ9",
+	"RVFNPRmW6AorjBdasRH7LbwHoaAWUooaPVoHW5hWaQLDbCeDuoYXMEyzHaifsGTllz52gs6yvrBF2Yk2",
+	"T9hE25r7uGrnKeszUrzugsWO8aXVigXIFnm2oC1+5j1pWy3jRopifM/Gr1nCTsKfVyxhY/pzwM6upRU/",
+	"bGzkGrsZ1O+8RnfvmDzy+mgNlawPlxW2fRhd3sDo30tGK8vrJZd5vp1lGVTwgh7TDD5WHTrj92tOn2VZ",
+	"H6MEKn5qhMWSABUla+laYZSEWl/W3DLUbg235CzxOFv60ucfsPCUY9TSgUXu8Q6K2vnfKyp/nreKytPn",
+	"+Zqi6OMdFLVZhycezRQfRR1hyd3UcdBYO/s66hh+a3Xs7SzEsbezqY3w9d7S+MaqeGfKVhXdDF8JlKUD",
+	"r6EJK1IYc+sFl+1vB9wicCn1JZYpS24T1e4PUf0Q1cNEtbsU1W6PqHbvKqo1AdAroSaa4ii08rwIIWHN",
+	"haSsG2O09b+0jtJC14sjasT2x0dwEhdQQt009sEJMoE3v568BVo60RZqrnglVAXn3H1Ef86lBMITTJCh",
+	"S0/VqXo7FS5YGKsvRIkODt68OwQSFqfd3Y1btbvApfBToYDTDhN0TmjFJUjkVYPpqTryUbIOeOOn2oov",
+	"WEIhBQ2gpPUinJEJWORl0io9Aa5KKFGix9ZP2F1IdAkIVcimpGgMWhe8lei5kC45VWY6c6LgErj3Vpw3",
+	"niyuSTsBo52gzGCLCv5J9BVw4ZOJkCKkHbA5RCcqhWWAIPAaMQkpR5MADNaoPLiZ81i7BFyhGx/Ck9xT",
+	"obroI0ICznMvnBeFA4f2QhRITJCOhA9KebnCODZM+GPlZX98xBJ2gdZF6rM0S3OqCG1QcSPYiG2nWbpN",
+	"7ZH7aeiMg5Yqeq4w1NySXxIXOxbOj9s1ZGd57FNs9H5dMWNeIaimPkcLW85z6x1MrK4hJ40IWvKpwaD0",
+	"tnINr/CfaEGHSrhvRCVOeCP9xmS9PbxFzvNkPag/Yzx6AoIooLoAcgtb7QEAeZb9Z3xOfMH+6IZZX3iL",
+	"cyXvdIK+YM/obHVGKxePqWGWLfSPKnDBjZGiCGwMPjhK6OpaICEjevjZ4oSN2E+D1QVu0N7eBu3VbdVy",
+	"uLV8FjtOFyqimoBalMQ8YU9jRN11R+qCS1GCUKbxUHLPQ0dzTV1zO2Mj9ho9yHaza+2A6phXLpwf7Zuz",
+	"ecKMdj11F+fjNvg4g6DzL3U5uxdEtyPTDuLz7qTjbYPzDXryr+y7j4VW164pCnRu0kg5axth+XBGYpLA",
+	"QeFlS0cvG/Nk2REGV6KcR1fUazcZOgzvlwyttYYgJ2ozKzWFa1UX4uuyuvUK3aOXp5tY9OEXU2jxu9lG",
+	"aQ8T3ahyDb3DzmlzPoOjwxtqubeFvkb/fVHKHq9sY+09DGZqG3fA2DQ9GMeLw6PD/K2aUnsPulNTyr5T",
+	"U4rz2P2a0sMKI6Jxe20EK7QX/ePJsS7COHiBUps4loW1LGGNpSF76r0ZDQaS1k2186O9bC9jRHTran3H",
+	"v1aTcBj7NifgVb0topyfzf8NAAD//8En4kloFQAA",
+}
+
+// GetSwagger returns the content of the embedded swagger specification file
+// or error if failed to decode
+func decodeSpec() ([]byte, error) {
+	zipped, err := base64.StdEncoding.DecodeString(strings.Join(swaggerSpec, ""))
+	if err != nil {
+		return nil, fmt.Errorf("error base64 decoding spec: %w", err)
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(zipped))
+	if err != nil {
+		return nil, fmt.Errorf("error decompressing spec: %w", err)
+	}
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(zr)
+	if err != nil {
+		return nil, fmt.Errorf("error decompressing spec: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+var rawSpec = decodeSpecCached()
+
+// a naive cached of a decoded swagger spec
+func decodeSpecCached() func() ([]byte, error) {
+	data, err := decodeSpec()
+	return func() ([]byte, error) {
+		return data, err
+	}
+}
+
+// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.
+func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
+	res := make(map[string]func() ([]byte, error))
+	if len(pathToFile) > 0 {
+		res[pathToFile] = rawSpec
+	}
+
+	return res
+}
+
+// GetSwagger returns the Swagger specification corresponding to the generated code
+// in this file. The external references of Swagger specification are resolved.
+// The logic of resolving external references is tightly connected to "import-mapping" feature.
+// Externally referenced files must be embedded in the corresponding golang packages.
+// Urls can be supported but this task was out of the scope.
+func GetSwagger() (swagger *openapi3.T, err error) {
+	resolvePath := PathToRawSpec("")
+
+	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = true
+	loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) {
+		pathToFile := url.String()
+		pathToFile = path.Clean(pathToFile)
+		getSpec, ok := resolvePath[pathToFile]
+		if !ok {
+			err1 := fmt.Errorf("path not found: %s", pathToFile)
+			return nil, err1
+		}
+		return getSpec()
+	}
+	var specData []byte
+	specData, err = rawSpec()
+	if err != nil {
+		return
+	}
+	swagger, err = loader.LoadFromData(specData)
+	if err != nil {
+		return
+	}
+	return
 }

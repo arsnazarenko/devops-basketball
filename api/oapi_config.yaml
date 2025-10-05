@@ -1,5 +1,6 @@
 package: gen
 generate:
+  embedded-spec: true
   chi-server: true
   strict-server: true
   models: true

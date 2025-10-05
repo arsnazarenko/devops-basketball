@@ -1,0 +1,6 @@
+http:
+  host: "127.0.0.1"
+  port: 8080
+
+postgres:
+  postgres_url: "postgres://postgres:postgres@localhost:5432/postgres"

@@ -20,8 +20,7 @@ type Postgres struct {
 	maxPoolSize  int
 	connAttempts int
 	connTimeout  time.Duration
-
-	Pool *pgxpool.Pool
+	Pool         *pgxpool.Pool
 }
 
 func New(url string, opts ...Option) (*Postgres, error) {

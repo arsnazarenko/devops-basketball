@@ -28,6 +28,26 @@ paths:
     get:
       summary: Get list of all players
       tags: [Players]
+      parameters:
+        - name: page_number
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+          description: Page number (starts from 1)
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of items per page (maximum 100)
       responses:
         '200':
           description: List of players
@@ -37,6 +57,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Player'
+        '400':
+          description: Invalid input data
       operationId: listPlayers
 
     post:
@@ -292,4 +314,4 @@ components:
           format: int64
           minimum: 1
           example: 102
-      description: Fields to update. Partial updates are allowed.
+      description: Fields to update.

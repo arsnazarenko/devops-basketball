@@ -7,10 +7,22 @@ import (
 	"github.com/arsnazarenko/devops-basketball/api/gen"
 )
 
-type PlayerRepo interface {
-	UpdatePlayer(ctx context.Context, request gen.UpdatePlayerRequestObject) (gen.UpdatePlayerResponseObject, error)
-	CreatePlayer(ctx context.Context, request gen.CreatePlayerRequestObject) (gen.CreatePlayerResponseObject, error)
-	DeletePlayer(ctx context.Context, request gen.DeletePlayerRequestObject) (gen.DeletePlayerResponseObject, error)
-	GetPlayer(ctx context.Context, request gen.GetPlayerRequestObject) (gen.GetPlayerResponseObject, error)
-	ListPlayers(ctx context.Context, request gen.ListPlayersRequestObject) (gen.ListPlayersResponseObject, error)
-}
+type (
+	// Player - use case
+	Player interface {
+		CreatePlayer(ctx context.Context, player *gen.PlayerCreate) (*gen.Player, error)
+		UpdatePlayer(ctx context.Context, playerID int64, player *gen.PlayerUpdate) (*gen.Player, error)
+		DeletePlayer(ctx context.Context, playerID int64) error
+		GetPlayer(ctx context.Context, playerID int64) (*gen.Player, error)
+		GetPlayerList(ctx context.Context, pageSize, pageNumber uint64) ([]gen.Player, error)
+	}
+
+	// PlayerRp - mongodb
+	PlayerRp interface {
+		CreatePlayer(ctx context.Context, player *gen.PlayerCreate) (*gen.Player, error)
+		UpdatePlayer(ctx context.Context, playerID int64, player *gen.PlayerUpdate) (*gen.Player, error)
+		DeletePlayer(ctx context.Context, playerID int64) error
+		GetPlayer(ctx context.Context, playerID int64) (*gen.Player, error)
+		GetPlayerList(ctx context.Context, pageSize, pageNumber uint64) ([]gen.Player, error)
+	}
+)

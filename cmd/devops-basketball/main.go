@@ -1,8 +1,9 @@
 package main
 
-import "fmt"
-
+import (
+	"github.com/arsnazarenko/devops-basketball/internal/app"
+)
 
 func main() {
-	fmt.Println("hello, devops!")
+	app.Run()
 }
