@@ -6,4 +6,4 @@
   - Frontend: React + TS
 
 - **OpenAPI Specification:**
-[basketball_players_api.yaml](basketball_players_api.yaml)
+[basketball_players_api.yaml](api/api.yaml)
