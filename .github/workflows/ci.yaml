@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.25.1'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Build
+      run: make build
+
+    - name: Generate handlers from OpenAPI spec
+      run: make generate-api
+
+    - name: Check for uncommitted changes
+      run: git diff --exit-code || (echo '❌ Found uncommitted changes. Please run `make generate-handlers` and commit the result.' && exit 1)
+
+    - name: Test
+      run: make test
