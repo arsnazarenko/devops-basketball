@@ -118,6 +118,66 @@ func TestCreatePlayer(t *testing.T) {
 
 		mockUC.AssertExpectations(t)
 	})
+
+	t.Run("invalid name too long", func(t *testing.T) {
+		playerCreate := &gen.PlayerCreate{
+			Name:        string(make([]byte, 51)), // 51 char > max 50
+			Surname:     "Doe",
+			Age:         25,
+			Height:      1900,
+			Weight:      85000,
+			Citizenship: "USA",
+			Role:        "PG",
+			TeamId:      1,
+		}
+
+		body, _ := json.Marshal(playerCreate)
+		resp, err := http.Post(server.URL+"/players", "application/json", bytes.NewReader(body))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("invalid age too low", func(t *testing.T) {
+		playerCreate := &gen.PlayerCreate{
+			Name:        "John",
+			Surname:     "Doe",
+			Age:         10, // < min 15
+			Height:      1900,
+			Weight:      85000,
+			Citizenship: "USA",
+			Role:        "PG",
+			TeamId:      1,
+		}
+
+		body, _ := json.Marshal(playerCreate)
+		resp, err := http.Post(server.URL+"/players", "application/json", bytes.NewReader(body))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("invalid role", func(t *testing.T) {
+		playerCreate := &gen.PlayerCreate{
+			Name:        "John",
+			Surname:     "Doe",
+			Age:         25,
+			Height:      1900,
+			Weight:      85000,
+			Citizenship: "USA",
+			Role:        "INVALID", // not in enum
+			TeamId:      1,
+		}
+
+		body, _ := json.Marshal(playerCreate)
+		resp, err := http.Post(server.URL+"/players", "application/json", bytes.NewReader(body))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
 }
 
 func TestGetPlayer(t *testing.T) {
@@ -167,6 +227,14 @@ func TestGetPlayer(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 
 		mockUC.AssertExpectations(t)
+	})
+
+	t.Run("invalid id format", func(t *testing.T) {
+		resp, err := http.Get(server.URL + "/players/abc")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 }
 
@@ -237,6 +305,15 @@ func TestListPlayers(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 		// No usecase call expected due to middleware validation
+	})
+
+	t.Run("page size too large", func(t *testing.T) {
+		// page_size max 100
+		resp, err := http.Get(server.URL + "/players?page_size=101&page_number=1")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 }
 
@@ -380,5 +457,14 @@ func TestDeletePlayer(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 
 		mockUC.AssertExpectations(t)
+	})
+
+	t.Run("invalid id format", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodDelete, server.URL+"/players/xyz", nil)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 }
