@@ -4,30 +4,26 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
-	_defaultMaxPoolSize  = 1
-	_defaultConnAttempts = 10
-	_defaultConnTimeout  = time.Second
+	_defaultMaxPoolSize = 1
+	_defaultConnTimeout = time.Second
 )
 
 type Postgres struct {
-	maxPoolSize  int
-	connAttempts int
-	connTimeout  time.Duration
-	Pool         *pgxpool.Pool
+	maxPoolSize int
+	connTimeout time.Duration
+	Pool        *pgxpool.Pool
 }
 
 func New(url string, opts ...Option) (*Postgres, error) {
 	pg := &Postgres{
-		maxPoolSize:  _defaultMaxPoolSize,
-		connAttempts: _defaultConnAttempts,
-		connTimeout:  _defaultConnTimeout,
+		maxPoolSize: _defaultMaxPoolSize,
+		connTimeout: _defaultConnTimeout,
 	}
 
 	// Custom options
@@ -41,22 +37,20 @@ func New(url string, opts ...Option) (*Postgres, error) {
 	}
 
 	poolConfig.MaxConns = int32(pg.maxPoolSize)
-	// poolConfig.AfterConnect = createTables
-	for pg.connAttempts > 0 {
-		pg.Pool, err = pgxpool.NewWithConfig(context.Background(), poolConfig)
-		if err == nil {
-			break
-		}
 
-		log.Printf("Postgres is trying to connect, attempts left: %d", pg.connAttempts)
-
-		time.Sleep(pg.connTimeout)
-
-		pg.connAttempts--
+	// Try to connect immediately to validate connection
+	pg.Pool, err = pgxpool.NewWithConfig(context.Background(), poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("postgres.NewPostgres.failed to connect: %w", err)
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("postgres.NewPostgres.connAttempts == 0: %w", err)
+	// Test the connection
+	ctx, cancel := context.WithTimeout(context.Background(), pg.connTimeout)
+	defer cancel()
+
+	if err = pg.Pool.Ping(ctx); err != nil {
+		pg.Pool.Close()
+		return nil, fmt.Errorf("postgres.NewPostgres.failed to ping: %w", err)
 	}
 
 	return pg, nil
