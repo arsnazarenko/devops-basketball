@@ -32,6 +32,7 @@ func Run() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer pg.Close()
 	// create chi router
 	r := chi.NewRouter()
 	// create PlayerServer
