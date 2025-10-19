@@ -12,8 +12,9 @@ import (
 	"github.com/arsnazarenko/devops-basketball/internal/usecase/repo"
 	"github.com/arsnazarenko/devops-basketball/pkg/postgres"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/oapi-codegen/nethttp-middleware"
+	oapi_middleware "github.com/oapi-codegen/nethttp-middleware"
 )
 
 func Run() {
@@ -24,7 +25,7 @@ func Run() {
 
 	swagger, err := gen.GetSwagger()
 	if err != nil {
-		log.Fatalf("Error loading swagger spec\n: %s", err)
+		log.Fatalf("Error loading swagger spec: %s", err)
 	}
 	swagger.Servers = nil
 
@@ -51,12 +52,16 @@ func Run() {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 	// add middleware for validation
-	r.Use(nethttpmiddleware.OapiRequestValidator(swagger))
+	r.Use(oapi_middleware.OapiRequestValidator(swagger))
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 	gen.HandlerFromMux(server, r)
 	s := &http.Server{
 		Handler: r,
 		Addr:    net.JoinHostPort(config.Host, config.Port),
 	}
+
+	log.Printf("Server started on port %s", config.Port)
 
 	log.Fatal(s.ListenAndServe())
 }
