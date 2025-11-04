@@ -1,3 +1,4 @@
+// Package app uses for running application
 package app
 
 import (
@@ -46,43 +47,45 @@ func Run() {
 	server := gen.NewStrictHandler(serversImpl, []gen.StrictMiddlewareFunc{})
 
 	// cors
-	r.Use(cors.Handler(cors.Options{
+	corsHandler := cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
-	}))
-
-	// metrics middleware
+	})
+	// cors middleware
+	r.Use(corsHandler)
+	// openapi validation middleware
+	r.Use(oapi_middleware.OapiRequestValidator(swagger))
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	// metrics middleware
 	r.Use(metrics.HTTPMetricsMiddleware())
 
-	// add middleware for validation (skip validation for metrics endpoint)
-	r.Use(func(next http.Handler) http.Handler {
-	    oapiValidator := oapi_middleware.OapiRequestValidator(swagger)
-	    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	        // Skip OpenAPI validation for /metrics endpoint
-	        if r.URL.Path == "/metrics" {
-	            next.ServeHTTP(w, r)
-	            return
-	        }
-	        oapiValidator(next).ServeHTTP(w, r)
-	    })
-	})
-	// r.Use(oapi_middleware.OapiRequestValidator(swagger))
-
-	r.Handle("/metrics", promhttp.Handler())
 	gen.HandlerFromMux(server, r)
 	s := &http.Server{
 		Handler: r,
-		Addr:    net.JoinHostPort(config.Host, config.Port),
+		Addr:    net.JoinHostPort(config.HTTP.Host, config.HTTP.Port),
 	}
 
-	log.Printf("Server started on port %s", config.Port)
+	// metrics server
+	go func() {
+		mr := chi.NewMux()
+		mr.Use(corsHandler)
+		mr.Use(middleware.Logger)
+		mr.Handle("/metrics", promhttp.Handler())
+
+		ms := &http.Server{
+			Handler: mr,
+			Addr:    net.JoinHostPort(config.Metrics.Host, config.Metrics.Port),
+		}
+		log.Printf("Metrics server started on port %s", config.Metrics.Port)
+		log.Fatal(ms.ListenAndServe())
+	}()
+
+	log.Printf("Server started on port %s", config.HTTP.Port)
 
 	log.Fatal(s.ListenAndServe())
 }
-

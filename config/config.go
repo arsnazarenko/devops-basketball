@@ -12,6 +12,7 @@ type (
 	Config struct {
 		HTTP     `yaml:"http"`
 		Postgres `yaml:"postgres"`
+		Metrics  `yaml:"metrics"`
 	}
 
 	HTTP struct {
@@ -21,6 +22,11 @@ type (
 
 	Postgres struct {
 		PostgresURL string `env-required:"true" yaml:"postgres_url" env:"POSTGRES_URL"`
+	}
+
+	Metrics struct {
+		Host string `env-required:"true" yaml:"host" env:"METRICS_HOST"`
+		Port string `env-required:"true" yaml:"port" env:"METRICS_PORT"`
 	}
 )
 

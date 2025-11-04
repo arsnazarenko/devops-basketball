@@ -19,9 +19,12 @@ COPY --from=builder /app/bin/devops-basketball /app/devops-basketball
 COPY ./config ./config
 
 ENV HTTP_HOST=0.0.0.0 \
-    HTTP_PORT=8080
+    HTTP_PORT=8080 \
+    METRICS_HOST=0.0.0.0 \
+    METRIC_PORT=8081
 
 EXPOSE 8080
+EXPOSE 8081
 
 ENTRYPOINT ["/app/devops-basketball"]
 

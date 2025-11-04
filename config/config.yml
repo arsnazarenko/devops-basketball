@@ -4,3 +4,7 @@ http:
 
 postgres:
   postgres_url: "postgres://postgres:postgres@localhost:5432/postgres"
+
+metrics:
+  host: "127.0.0.1"
+  port: 8081
