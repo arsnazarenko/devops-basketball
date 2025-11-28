@@ -2,7 +2,7 @@ name: Backend CI
 
 on:
   push:
-    branches: [ main, feature/prometheus-metrics ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -13,11 +13,11 @@ env:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -28,17 +28,23 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      - name: Generate handlers from OpenAPI spec
+        run: make generate-api
+
+      - name: Check for uncommitted changes
+        run: git diff --exit-code || (echo '❌ Found uncommitted changes. Please run `make generate-handlers` and commit the result.' && exit 1)
+
       - name: Build
         run: go build -v ./...
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -67,13 +73,13 @@ jobs:
 
   docker:
     name: Build and Push Docker Image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build, test]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/prometheus-metrics')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main')
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
